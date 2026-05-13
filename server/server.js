@@ -13,6 +13,15 @@ import userRoutes from "./routes/userRoutes.js";
 dotenv.config();
 
 const app = express();
+app.use(
+  cors({
+    origin: ["http://localhost:5173", "https://team-taskers.vercel.app"],
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true,
+  }),
+);
+
+app.use(express.json());
 const PORT = process.env.PORT || 5000;
 const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:5173")
   .split(",")
@@ -40,15 +49,8 @@ const initializeServer = async () => {
     // ============================================
 
     // CORS middleware - Allow requests from frontend
-    app.use(
-      cors({
-        origin: ["http://localhost:5173", "https://team-taskers.vercel.app"],
-        credentials: true,
-      }),
-    );
 
     // Body parser middleware
-    app.use(express.json());
     app.use(express.urlencoded({ extended: true }));
 
     // ============================================
