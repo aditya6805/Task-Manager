@@ -12,4 +12,8 @@ if (!admin.apps.length) {
   });
 }
 
+export const verifyIdToken = async (token) => {
+  return await admin.auth().verifyIdToken(token);
+};
+
 export default admin;
