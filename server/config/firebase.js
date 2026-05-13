@@ -6,14 +6,20 @@ const serviceAccount = {
   clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
 };
 
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-  });
-}
+export const initializeFirebase = () => {
+  if (!admin.apps.length) {
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+    });
+  }
+
+  return admin;
+};
 
 export const verifyIdToken = async (token) => {
   return await admin.auth().verifyIdToken(token);
 };
 
-export default admin;
+const firebaseAdmin = initializeFirebase();
+
+export default firebaseAdmin;
