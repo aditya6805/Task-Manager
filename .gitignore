@@ -25,3 +25,9 @@ pnpm-debug.log*
 .DS_Store
 .vscode/
 .idea/
+
+server/config/serviceAccountKey.json
+server/.env
+client/.env
+node_modules
+dist
