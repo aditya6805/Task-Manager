@@ -3,7 +3,8 @@
  * Handles all task-related operations (CRUD, status updates, filtering)
  */
 
-import { Task, Project, User } from "../models/index.js";
+import { Project, User } from "../models/index.js";
+import Task from "../models/Task.js";
 
 const normalizeAssignees = (assignedTo, creatorId) => {
   const selected = Array.isArray(assignedTo)
@@ -383,110 +384,51 @@ export const getTaskById = async (req, res) => {
 export const updateTaskStatus = async (req, res) => {
   try {
     const { taskId } = req.params;
-    const { status, title, description, dueDate, assignedTo } = req.body;
+    const { status } = req.body;
 
-    if (!status) {
-      return res.status(400).json({
-        status: "error",
-        message: "Status is required",
-      });
-    }
+    console.log("Task ID:", taskId);
+    console.log("Status:", status);
 
-    // Validate status value
+    // validate status
     const validStatuses = ["Pending", "In Progress", "Completed"];
+
     if (!validStatuses.includes(status)) {
       return res.status(400).json({
-        status: "error",
-        message: `Status must be one of: ${validStatuses.join(", ")}`,
+        success: false,
+        message: "Invalid status",
       });
     }
 
-    // Find task
-    const task = await Task.findById(taskId).populate("projectId");
-    const currentUser = await getCurrentUser(req.user.uid);
+    // update directly
+    const updatedTask = await Task.findByIdAndUpdate(
+      taskId,
+      {
+        status,
+        updatedAt: new Date(),
+      },
+      {
+        new: true,
+        runValidators: true,
+      },
+    );
 
-    if (!task) {
+    if (!updatedTask) {
       return res.status(404).json({
-        status: "error",
+        success: false,
         message: "Task not found",
       });
     }
 
-    const projectMembers = Array.isArray(task.projectId?.members)
-      ? task.projectId.members
-      : [];
-    const isProjectMember = projectMembers.includes(req.user.uid);
-    const isAssignedMember = (task.assignedTo || []).includes(req.user.uid);
-    const isAdmin = currentUser?.role === "admin";
-
-    if (!isAdmin && !isProjectMember && !isAssignedMember) {
-      return res.status(403).json({
-        status: "error",
-        message: "Forbidden: You are not a member of this project",
-      });
-    }
-
-    if (isAdmin && typeof title === "string") {
-      task.title = title.trim();
-    }
-
-    if (isAdmin && typeof description === "string") {
-      task.description = description.trim();
-    }
-
-    if (isAdmin && dueDate !== undefined) {
-      task.dueDate = dueDate ? new Date(dueDate) : null;
-    }
-
-    if (isAdmin && assignedTo !== undefined) {
-      if (!Array.isArray(task.projectId?.members)) {
-        return res.status(400).json({
-          status: "error",
-          message:
-            "Cannot update assignees because the linked project is missing",
-        });
-      }
-
-      const assignedIds = normalizeAssignees(assignedTo, task.createdBy);
-      const validMembers = [...new Set(projectMembers.map(String))];
-      const invalidAssignees = assignedIds.filter(
-        (memberId) => !validMembers.includes(memberId),
-      );
-      if (invalidAssignees.length > 0) {
-        return res.status(400).json({
-          status: "error",
-          message: "Assignees must be members of the project",
-        });
-      }
-
-      task.assignedTo = assignedIds;
-    }
-
-    // Update status
-    if (status) {
-      task.status = status;
-    }
-
-    await task.save();
-
-    const userMap = await buildUserMap([
-      req.user.uid,
-      task.createdBy,
-      ...task.assignedTo,
-      ...projectMembers,
-      ...(task.submissions || []).map((item) => item.submittedBy),
-      ...(task.feedback || []).map((item) => item.addedBy),
-    ]);
-
-    res.status(200).json({
-      status: "success",
-      message: "Task status updated successfully",
-      data: taskToResponse(task, userMap),
+    return res.status(200).json({
+      success: true,
+      message: "Task updated successfully",
+      task: updatedTask,
     });
   } catch (error) {
-    console.error("❌ Update task error:", error.message);
-    res.status(500).json({
-      status: "error",
+    console.error("UPDATE TASK ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
       message: "Failed to update task",
       error: error.message,
     });
