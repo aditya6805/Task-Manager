@@ -112,8 +112,7 @@ export const getDashboard = async (req, res) => {
       const scopedTasks = isAdmin
         ? projectTasks
         : projectTasks.filter(
-            (t) =>
-              Array.isArray(t.assignedTo) && t.assignedTo.includes(userId),
+            (t) => Array.isArray(t.assignedTo) && t.assignedTo.includes(userId),
           );
       allUserTasks.push(...scopedTasks);
 
@@ -139,8 +138,7 @@ export const getDashboard = async (req, res) => {
     const taskStats = {
       total: allUserTasks.length,
       pending: allUserTasks.filter((t) => t.status === "Pending").length,
-      inProgress: allUserTasks.filter((t) => t.status === "In Progress")
-        .length,
+      inProgress: allUserTasks.filter((t) => t.status === "In Progress").length,
       completed: allUserTasks.filter((t) => t.status === "Completed").length,
     };
 
@@ -158,27 +156,19 @@ export const getDashboard = async (req, res) => {
     const overdueTasks = allUserTasks
       .filter(
         (t) =>
-          t.status !== "Completed" &&
-          t.dueDate &&
-          new Date(t.dueDate) < now,
+          t.status !== "Completed" && t.dueDate && new Date(t.dueDate) < now,
       )
       .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
       .map(buildTaskResponse);
 
     const pendingTasks = allUserTasks
       .filter((t) => t.status === "Pending")
-      .sort(
-        (a, b) =>
-          new Date(b.createdAt || 0) - new Date(a.createdAt || 0),
-      )
+      .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
       .map(buildTaskResponse);
 
     const inProgressTasks = allUserTasks
       .filter((t) => t.status === "In Progress")
-      .sort(
-        (a, b) =>
-          new Date(b.createdAt || 0) - new Date(a.createdAt || 0),
-      )
+      .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
       .map(buildTaskResponse);
 
     const upcomingTasks = allUserTasks
@@ -291,18 +281,14 @@ export const getDashboardStats = async (req, res) => {
       } else {
         allUserTasks.push(
           ...projectTasks.filter(
-            (t) =>
-              Array.isArray(t.assignedTo) && t.assignedTo.includes(userId),
+            (t) => Array.isArray(t.assignedTo) && t.assignedTo.includes(userId),
           ),
         );
       }
     }
 
     const overdueTasks = allUserTasks.filter(
-      (t) =>
-        t.status !== "Completed" &&
-        t.dueDate &&
-        new Date(t.dueDate) < now,
+      (t) => t.status !== "Completed" && t.dueDate && new Date(t.dueDate) < now,
     );
 
     const completedTasks = allUserTasks.filter(
