@@ -26,9 +26,44 @@ export const getDashboard = async (req, res) => {
     // Fetch user info
     const user = await User.findOne({ firebaseUID: userId });
     if (!user) {
-      return res.status(404).json({
-        status: "error",
-        message: "User not found",
+      // Return empty dashboard instead of 404 for new users
+      return res.status(200).json({
+        status: "success",
+        message: "Dashboard data retrieved successfully",
+        data: {
+          user: {
+            uid: userId,
+            name: req.user.displayName || req.user.email || "User",
+            email: req.user.email || "",
+            role: "user",
+            joinedDate: new Date(),
+          },
+          summary: {
+            totalProjects: 0,
+            totalTasks: 0,
+            taskStats: { total: 0, pending: 0, inProgress: 0, completed: 0 },
+            completionRate: "0%",
+            overdueTaskCount: 0,
+          },
+          projects: [],
+          tasksByStatus: { Pending: 0, "In Progress": 0, Completed: 0 },
+          overdueTasks: [],
+          stats: {
+            totalTasks: 0,
+            completedTasks: 0,
+            pendingTasks: 0,
+            inProgressTasks: 0,
+            overdueTasks: 0,
+            completionRate: "0%",
+            averageTasksPerProject: 0,
+          },
+          tasks: { pending: [], inProgress: [], overdue: [], upcoming: [] },
+          metrics: {
+            averageTasksPerProject: 0,
+            completeTasksThisMonth: 0,
+            taskCompletionRate: 0,
+          },
+        },
       });
     }
 

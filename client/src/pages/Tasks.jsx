@@ -118,7 +118,13 @@ export default function Tasks() {
       const updatedTask = response.data?.data
 
       if (updatedTask?._id) {
-        setTasks((prev) => prev.map((task) => (task._id === updatedTask._id ? updatedTask : task)))
+        setTasks((prev) =>
+          prev.map((task) =>
+            task._id === updatedTask._id
+              ? { ...task, ...updatedTask }
+              : task
+          )
+        )
       } else {
         await fetchTasks()
       }

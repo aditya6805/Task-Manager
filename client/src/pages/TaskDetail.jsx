@@ -20,10 +20,11 @@ export default function TaskDetail() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [submissionText, setSubmissionText] = useState('')
+  const [submissionLink, setSubmissionLink] = useState('')
   const [submissionStatus, setSubmissionStatus] = useState('Draft')
   const [submissionSaving, setSubmissionSaving] = useState(false)
   const [reviewText, setReviewText] = useState('')
-  const [reviewTarget, setReviewTarget] = useState('')
+  const [reviewingIndex, setReviewingIndex] = useState(null)
   const [reviewSaving, setReviewSaving] = useState(false)
   const [isEditingTask, setIsEditingTask] = useState(false)
   const [editForm, setEditForm] = useState(emptyEditForm)
@@ -38,12 +39,14 @@ export default function TaskDetail() {
       return
     }
 
-    const currentSubmission = (task.submissions || []).find(
-      (submission) => submission.submittedBy === user.uid,
-    )
+    // Pre-fill user submission form with their latest submission
+    const latestSubmission = [...(task.submissions || [])]
+      .reverse()
+      .find((submission) => submission.submittedBy === user.uid)
 
-    setSubmissionText(currentSubmission?.content || '')
-    setSubmissionStatus(currentSubmission?.status === 'Submitted' ? 'Submitted' : 'Draft')
+    setSubmissionText(latestSubmission?.content || '')
+    setSubmissionLink(latestSubmission?.link || '')
+    setSubmissionStatus(latestSubmission?.status === 'Submitted' ? 'Submitted' : 'Draft')
     setEditForm({
       title: task.title || '',
       description: task.description || '',
@@ -51,7 +54,6 @@ export default function TaskDetail() {
       assignedTo: Array.isArray(task.assignedTo) ? task.assignedTo : [],
       status: task.status || 'Pending',
     })
-    setReviewTarget((task.submissions || [])[0]?.submittedBy || '')
   }, [task, user?.uid])
 
   const fetchTask = async () => {
@@ -84,7 +86,10 @@ export default function TaskDetail() {
   }, [task])
 
   const currentSubmission = useMemo(
-    () => (task?.submissions || []).find((submission) => submission.submittedBy === user?.uid),
+    () => {
+      if (!task?.submissions || !user?.uid) return null
+      return [...task.submissions].reverse().find((s) => s.submittedBy === user.uid)
+    },
     [task?.submissions, user?.uid],
   )
 
@@ -118,6 +123,7 @@ export default function TaskDetail() {
       setError('')
       const response = await apiClient.post(`/tasks/${taskId}/submissions`, {
         content: submissionText,
+        link: submissionLink,
         status: nextStatus,
       })
       setTask(response.data.data)
@@ -149,21 +155,50 @@ export default function TaskDetail() {
     }
   }
 
+  const openReview = (index) => {
+    setReviewingIndex(index)
+    setReviewText('')
+  }
+
+  const cancelReview = () => {
+    setReviewingIndex(null)
+    setReviewText('')
+  }
+
   const saveReview = async (status) => {
+    if (reviewingIndex === null || reviewingIndex === undefined) return
     try {
       setReviewSaving(true)
       setError('')
       const response = await apiClient.post(`/tasks/${taskId}/feedback`, {
         comment: reviewText,
         status,
-        submittedBy: reviewTarget || undefined,
+        submissionIndex: reviewingIndex,
       })
       setTask(response.data.data)
       setReviewText('')
+      setReviewingIndex(null)
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to save review')
     } finally {
       setReviewSaving(false)
+    }
+  }
+
+  const getStatusBadgeColor = (status) => {
+    switch (status) {
+      case 'Accepted':
+        return 'bg-green-100 text-green-700'
+      case 'Rejected':
+        return 'bg-red-100 text-red-700'
+      case 'Changes Requested':
+        return 'bg-amber-100 text-amber-700'
+      case 'Submitted':
+        return 'bg-blue-100 text-blue-700'
+      case 'Draft':
+        return 'bg-gray-100 text-gray-600'
+      default:
+        return 'bg-gray-100 text-gray-600'
     }
   }
 
@@ -187,6 +222,7 @@ export default function TaskDetail() {
         </div>
       )}
 
+      {/* Task Details */}
       <div className="bg-white border border-gray-200 rounded p-6">
         <div className="flex items-start justify-between gap-4 mb-4">
           <div>
@@ -238,263 +274,268 @@ export default function TaskDetail() {
         </div>
       </div>
 
+      {/* Admin Controls - directly below Task Details (admin only) */}
+      {isAdmin && (
+        <div className="bg-white border border-gray-200 rounded p-6">
+          <h2 className="text-lg font-semibold text-gray-800 mb-4">Admin Controls</h2>
+
+          {!isEditingTask ? (
+            <button
+              type="button"
+              onClick={() => setIsEditingTask(true)}
+              className="px-4 py-2 text-white bg-slate-700 rounded hover:bg-slate-800 transition"
+            >
+              Edit Task
+            </button>
+          ) : (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                  <input
+                    name="title"
+                    value={editForm.title}
+                    onChange={handleEditChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-slate-500 focus:border-slate-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
+                  <input
+                    type="date"
+                    name="dueDate"
+                    value={editForm.dueDate}
+                    onChange={handleEditChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-slate-500 focus:border-slate-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <textarea
+                  name="description"
+                  value={editForm.description}
+                  onChange={handleEditChange}
+                  rows="3"
+                  className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-slate-500 focus:border-slate-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Members</label>
+                <div className="border border-gray-300 rounded px-4 py-3 max-h-48 overflow-y-auto space-y-2">
+                  {projectMembers.map((member) => {
+                    const checked = editForm.assignedTo.includes(member.firebaseUID)
+                    return (
+                      <label key={member.firebaseUID} className="flex items-start gap-2 text-sm text-gray-700">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleAssignee(member.firebaseUID)}
+                          className="mt-1"
+                        />
+                        <span>
+                          {member.name || member.firebaseUID}
+                          {member.email ? ` (${member.email})` : ''}
+                        </span>
+                      </label>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select
+                  name="status"
+                  value={editForm.status}
+                  onChange={handleEditChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-slate-500 focus:border-slate-500"
+                >
+                  <option value="Pending">Pending</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Completed">Completed</option>
+                </select>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={saveTaskChanges}
+                  disabled={editSaving}
+                  className="px-4 py-2 text-white bg-slate-700 rounded hover:bg-slate-800 transition disabled:opacity-50"
+                >
+                  {editSaving ? 'Saving...' : 'Save Task Changes'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsEditingTask(false)}
+                  disabled={editSaving}
+                  className="px-4 py-2 text-gray-700 border border-gray-300 rounded hover:bg-gray-50 transition disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* User Submission Area */}
+      <div className="bg-white border border-gray-200 rounded p-6">
+        <h2 className="text-lg font-semibold text-gray-800 mb-4">Your Submission</h2>
+        <textarea
+          value={submissionText}
+          onChange={(e) => setSubmissionText(e.target.value)}
+          rows="8"
+          className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-slate-500 focus:border-slate-500"
+          placeholder="Write your contribution or progress here..."
+        />
+        <div className="mt-3">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Attachment Link (optional)</label>
+          <input
+            type="url"
+            value={submissionLink}
+            onChange={(e) => setSubmissionLink(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-slate-500 focus:border-slate-500"
+            placeholder="https://github.com/... or any link"
+          />
+        </div>
+        <div className="mt-3">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Submission Status</label>
+          <select
+            value={submissionStatus}
+            onChange={(e) => setSubmissionStatus(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-slate-500 focus:border-slate-500"
+          >
+            <option value="Draft">Draft</option>
+            <option value="Submitted">Submitted</option>
+          </select>
+        </div>
+        <div className="flex flex-wrap gap-3 mt-4">
+          <button
+            type="button"
+            onClick={() => saveSubmission(submissionStatus)}
+            disabled={submissionSaving}
+            className="px-4 py-2 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50 transition disabled:opacity-50"
+          >
+            {submissionSaving ? 'Saving...' : 'Save / Update'}
+          </button>
+          <button
+            type="button"
+            onClick={() => saveSubmission('Submitted')}
+            disabled={submissionSaving}
+            className="px-4 py-2 bg-slate-700 text-white rounded text-sm hover:bg-slate-800 transition disabled:opacity-50"
+          >
+            Submit Work
+          </button>
+          <div className="text-xs text-gray-500 self-center">Current status: {submissionStatus}</div>
+        </div>
+        {currentSubmission && (
+          <p className="mt-3 text-xs text-gray-500">
+            Last saved: {new Date(currentSubmission.submittedAt).toLocaleString()}
+          </p>
+        )}
+      </div>
+
+      {/* Submission History */}
       <div className="bg-white border border-gray-200 rounded p-6">
         <h2 className="text-lg font-semibold text-gray-800 mb-4">Submission History</h2>
         <div className="space-y-3">
           {(task.submissions || []).length > 0 ? (
             task.submissions.map((submission, index) => (
-              <div key={`${submission.submittedBy}-${index}`} className="border border-gray-200 rounded p-4">
+              <div key={`submission-${index}`} className="border border-gray-200 rounded p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-medium text-gray-800">
-                    {submission.submittedByUser?.name || submission.submittedByUser?.email || submission.submittedBy}
-                  </p>
-                  <span className="text-xs text-gray-500">{submission.status}</span>
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">
+                      Submission #{index + 1} &mdash; {submission.submittedByUser?.name || submission.submittedByUser?.email || submission.submittedBy}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {submission.submittedAt ? new Date(submission.submittedAt).toLocaleString() : '-'}
+                    </p>
+                  </div>
+                  <span className={`text-xs font-medium px-2 py-1 rounded ${getStatusBadgeColor(submission.status)}`}>
+                    {submission.status}
+                  </span>
                 </div>
-                <p className="text-sm text-gray-600 whitespace-pre-wrap">{submission.content || 'No content yet.'}</p>
-                <p className="mt-2 text-xs text-gray-500">{submission.submittedAt ? new Date(submission.submittedAt).toLocaleString() : '-'}</p>
+                <p className="text-sm text-gray-600 whitespace-pre-wrap">{submission.content || 'No content.'}</p>
+                {submission.link && (
+                  <p className="mt-1 text-xs text-blue-600">
+                    Link: <a href={submission.link} target="_blank" rel="noopener noreferrer" className="underline">{submission.link}</a>
+                  </p>
+                )}
                 {submission.adminFeedback && (
-                  <p className="mt-2 text-xs text-slate-700">Feedback: {submission.adminFeedback}</p>
+                  <div className="mt-2 bg-gray-50 border border-gray-200 rounded p-3">
+                    <p className="text-xs font-medium text-gray-700">Admin Feedback:</p>
+                    <p className="text-xs text-gray-600 mt-1">{submission.adminFeedback}</p>
+                  </div>
+                )}
+
+                {/* Admin: Review button on each submission */}
+                {isAdmin && reviewingIndex !== index && (
+                  <button
+                    type="button"
+                    onClick={() => openReview(index)}
+                    className="mt-2 text-xs text-slate-700 hover:underline"
+                  >
+                    Review Submission
+                  </button>
+                )}
+
+                {/* Admin: Inline review panel for this specific submission */}
+                {isAdmin && reviewingIndex === index && (
+                  <div className="mt-3 pt-3 border-t border-gray-200 space-y-3">
+                    <h4 className="text-sm font-semibold text-gray-800">
+                      Reviewing Submission #{index + 1}
+                    </h4>
+                    <textarea
+                      value={reviewText}
+                      onChange={(e) => setReviewText(e.target.value)}
+                      rows="3"
+                      className="w-full px-4 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-slate-500 focus:border-slate-500"
+                      placeholder="Write review feedback..."
+                    />
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => saveReview('Accepted')}
+                        disabled={reviewSaving}
+                        className="px-3 py-1.5 text-white bg-green-600 rounded text-xs hover:bg-green-700 transition disabled:opacity-50"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => saveReview('Rejected')}
+                        disabled={reviewSaving}
+                        className="px-3 py-1.5 text-white bg-red-600 rounded text-xs hover:bg-red-700 transition disabled:opacity-50"
+                      >
+                        Reject
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => saveReview('Changes Requested')}
+                        disabled={reviewSaving}
+                        className="px-3 py-1.5 text-white bg-amber-600 rounded text-xs hover:bg-amber-700 transition disabled:opacity-50"
+                      >
+                        Request Changes
+                      </button>
+                      <button
+                        type="button"
+                        onClick={cancelReview}
+                        disabled={reviewSaving}
+                        className="px-3 py-1.5 text-gray-700 border border-gray-300 rounded text-xs hover:bg-gray-50 transition disabled:opacity-50"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
             ))
           ) : (
             <p className="text-sm text-gray-500">No submissions yet.</p>
-          )}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {isAdmin && (
-          <div className="bg-white border border-gray-200 rounded p-6">
-            <h2 className="text-lg font-semibold text-gray-800 mb-4">Admin Controls</h2>
-
-            {!isEditingTask ? (
-              <button
-                type="button"
-                onClick={() => setIsEditingTask(true)}
-                className="px-4 py-2 text-white bg-slate-700 rounded hover:bg-slate-800 transition"
-              >
-                Edit Task
-              </button>
-            ) : (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
-                    <input
-                      name="title"
-                      value={editForm.title}
-                      onChange={handleEditChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-slate-500 focus:border-slate-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
-                    <input
-                      type="date"
-                      name="dueDate"
-                      value={editForm.dueDate}
-                      onChange={handleEditChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-slate-500 focus:border-slate-500"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                  <textarea
-                    name="description"
-                    value={editForm.description}
-                    onChange={handleEditChange}
-                    rows="3"
-                    className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-slate-500 focus:border-slate-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Members</label>
-                  <div className="border border-gray-300 rounded px-4 py-3 max-h-48 overflow-y-auto space-y-2">
-                    {projectMembers.map((member) => {
-                      const checked = editForm.assignedTo.includes(member.firebaseUID)
-                      return (
-                        <label key={member.firebaseUID} className="flex items-start gap-2 text-sm text-gray-700">
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => toggleAssignee(member.firebaseUID)}
-                            className="mt-1"
-                          />
-                          <span>
-                            {member.name || member.firebaseUID}
-                            {member.email ? ` (${member.email})` : ''}
-                          </span>
-                        </label>
-                      )
-                    })}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                  <select
-                    name="status"
-                    value={editForm.status}
-                    onChange={handleEditChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-slate-500 focus:border-slate-500"
-                  >
-                    <option value="Pending">Pending</option>
-                    <option value="In Progress">In Progress</option>
-                    <option value="Completed">Completed</option>
-                  </select>
-                </div>
-
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={saveTaskChanges}
-                    disabled={editSaving}
-                    className="px-4 py-2 text-white bg-slate-700 rounded hover:bg-slate-800 transition disabled:opacity-50"
-                  >
-                    {editSaving ? 'Saving...' : 'Save Task Changes'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIsEditingTask(false)}
-                    disabled={editSaving}
-                    className="px-4 py-2 text-gray-700 border border-gray-300 rounded hover:bg-gray-50 transition disabled:opacity-50"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <div className="mt-6 pt-6 border-t border-gray-200 space-y-4">
-              <h3 className="text-base font-semibold text-gray-800">Review Submission</h3>
-
-              {(task.submissions || []).length > 0 && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Select Submission</label>
-                  <select
-                    value={reviewTarget}
-                    onChange={(e) => setReviewTarget(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-slate-500 focus:border-slate-500"
-                  >
-                    {(task.submissions || []).map((submission, index) => (
-                      <option key={`${submission.submittedBy}-${index}`} value={submission.submittedBy}>
-                        {submission.submittedByUser?.name || submission.submittedByUser?.email || submission.submittedBy}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Feedback</label>
-                <textarea
-                  value={reviewText}
-                  onChange={(e) => setReviewText(e.target.value)}
-                  rows="4"
-                  className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-slate-500 focus:border-slate-500"
-                  placeholder="Write review feedback..."
-                />
-              </div>
-
-              <div className="flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  onClick={() => saveReview('Accepted')}
-                  disabled={reviewSaving}
-                  className="px-4 py-2 text-white bg-green-600 rounded hover:bg-green-700 transition disabled:opacity-50"
-                >
-                  Approve
-                </button>
-                <button
-                  type="button"
-                  onClick={() => saveReview('Rejected')}
-                  disabled={reviewSaving}
-                  className="px-4 py-2 text-white bg-red-600 rounded hover:bg-red-700 transition disabled:opacity-50"
-                >
-                  Reject
-                </button>
-                <button
-                  type="button"
-                  onClick={() => saveReview('Changes Requested')}
-                  disabled={reviewSaving}
-                  className="px-4 py-2 text-white bg-amber-600 rounded hover:bg-amber-700 transition disabled:opacity-50"
-                >
-                  Request Changes
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="bg-white border border-gray-200 rounded p-6">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">User Submission Area</h2>
-          <textarea
-            value={submissionText}
-            onChange={(e) => setSubmissionText(e.target.value)}
-            rows="8"
-            className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-slate-500 focus:border-slate-500"
-            placeholder="Write your contribution or progress here..."
-          />
-          <div className="mt-3">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Submission Status</label>
-            <select
-              value={submissionStatus}
-              onChange={(e) => setSubmissionStatus(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-slate-500 focus:border-slate-500"
-            >
-              <option value="Draft">Draft</option>
-              <option value="Submitted">Submitted</option>
-            </select>
-          </div>
-          <div className="flex flex-wrap gap-3 mt-4">
-            <button
-              type="button"
-              onClick={() => saveSubmission(submissionStatus)}
-              disabled={submissionSaving}
-              className="px-4 py-2 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50 transition disabled:opacity-50"
-            >
-              {submissionSaving ? 'Saving...' : 'Save / Update'}
-            </button>
-            <button
-              type="button"
-              onClick={() => saveSubmission('Submitted')}
-              disabled={submissionSaving}
-              className="px-4 py-2 bg-slate-700 text-white rounded text-sm hover:bg-slate-800 transition disabled:opacity-50"
-            >
-              Submit Work
-            </button>
-            <div className="text-xs text-gray-500 self-center">Current status: {submissionStatus}</div>
-          </div>
-          {currentSubmission && (
-            <p className="mt-3 text-xs text-gray-500">
-              Last saved: {new Date(currentSubmission.submittedAt).toLocaleString()}
-            </p>
-          )}
-        </div>
-      </div>
-
-      <div className="bg-white border border-gray-200 rounded p-6">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4">Activity</h2>
-        <div className="space-y-3">
-          {(task.feedback || []).length > 0 ? (
-            task.feedback.map((entry, index) => (
-              <div key={`${entry.addedBy}-${index}`} className="border border-gray-200 rounded p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-medium text-gray-800">
-                    {entry.addedByUser?.name || entry.addedByUser?.email || entry.addedBy}
-                  </p>
-                  <span className="text-xs text-gray-500">{entry.status}</span>
-                </div>
-                <p className="text-sm text-gray-600 whitespace-pre-wrap">{entry.comment}</p>
-                <p className="mt-2 text-xs text-gray-500">{entry.createdAt ? new Date(entry.createdAt).toLocaleString() : '-'}</p>
-              </div>
-            ))
-          ) : (
-            <p className="text-sm text-gray-500">No feedback yet.</p>
           )}
         </div>
       </div>

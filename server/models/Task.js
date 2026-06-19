@@ -56,6 +56,7 @@ const taskSchema = new mongoose.Schema(
           {
             submittedBy: { type: String, required: true },
             content: { type: String, default: "" },
+            link: { type: String, default: "" },
             submittedAt: { type: Date, default: Date.now },
             status: {
               type: String,

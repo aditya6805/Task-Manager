@@ -9,6 +9,7 @@ export default function Dashboard() {
   const [dashboard, setDashboard] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [retryCount, setRetryCount] = useState(0)
 
   useEffect(() => {
     fetchDashboard()
@@ -20,11 +21,32 @@ export default function Dashboard() {
       const response = await apiClient.get('/dashboard')
       setDashboard(response.data.data)
       setError('')
+      setRetryCount(0)
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to load dashboard')
+      const status = err.response?.status
+      let message = 'Failed to load dashboard'
+      if (status === 401) {
+        message = 'Authentication expired. Please log in again.'
+      } else if (status === 404) {
+        message = 'User profile not found. Please refresh the page or log in again.'
+      } else if (status === 500) {
+        message = 'Server error. Please try again in a moment.'
+      } else if (!err.response) {
+        message = 'Network error. Please check your connection.'
+      } else if (err.response?.data?.message) {
+        message = err.response.data.message
+      }
+      setError(message)
       console.error('Dashboard error:', err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleRetry = () => {
+    if (retryCount < 3) {
+      setRetryCount((prev) => prev + 1)
+      fetchDashboard()
     }
   }
 
@@ -33,7 +55,19 @@ export default function Dashboard() {
   }
 
   if (error) {
-    return <div className="bg-red-50 border border-red-200 text-red-600 px-6 py-4 rounded">{error}</div>
+    return (
+      <div className="bg-red-50 border border-red-200 text-red-600 px-6 py-4 rounded">
+        <p>{error}</p>
+        {retryCount < 3 && (
+          <button
+            onClick={handleRetry}
+            className="mt-3 px-4 py-2 text-sm text-white bg-red-600 rounded hover:bg-red-700 transition"
+          >
+            Retry {retryCount > 0 ? `(${retryCount}/3)` : ''}
+          </button>
+        )}
+      </div>
+    )
   }
 
   if (!dashboard) {

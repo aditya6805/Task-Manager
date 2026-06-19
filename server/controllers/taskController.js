@@ -3,8 +3,7 @@
  * Handles all task-related operations (CRUD, status updates, filtering)
  */
 
-import { Project, User } from "../models/index.js";
-import Task from "../models/Task.js";
+import { Project, User, Task } from "../models/index.js";
 
 const normalizeAssignees = (assignedTo, creatorId) => {
   const selected = Array.isArray(assignedTo)
@@ -76,17 +75,27 @@ const taskToResponse = (task, userMap) => {
     assignedToUsers: (task.assignedTo || []).map((memberId) =>
       toUserSummary(userMap.get(memberId), memberId),
     ),
-    submissions: (task.submissions || []).map((submission) => ({
-      ...submission,
-      submittedByUser: toUserSummary(
-        userMap.get(submission.submittedBy),
-        submission.submittedBy,
-      ),
-    })),
-    feedback: (task.feedback || []).map((entry) => ({
-      ...entry,
-      addedByUser: toUserSummary(userMap.get(entry.addedBy), entry.addedBy),
-    })),
+    submissions: (task.submissions || []).map((submission) => {
+      const plain =
+        typeof submission.toObject === "function"
+          ? submission.toObject()
+          : { ...submission };
+      return {
+        ...plain,
+        submittedByUser: toUserSummary(
+          userMap.get(submission.submittedBy),
+          submission.submittedBy,
+        ),
+      };
+    }),
+    feedback: (task.feedback || []).map((entry) => {
+      const plain =
+        typeof entry.toObject === "function" ? entry.toObject() : { ...entry };
+      return {
+        ...plain,
+        addedByUser: toUserSummary(userMap.get(entry.addedBy), entry.addedBy),
+      };
+    }),
   };
 };
 
@@ -199,11 +208,20 @@ export const getTasks = async (req, res) => {
   try {
     const userId = req.user.uid;
     const currentUser = await getCurrentUser(userId);
+    const { status } = req.query;
 
-    // Find all tasks assigned to user, or all tasks for admins
-    const tasks = await Task.find(
-      currentUser?.role === "admin" ? {} : { assignedTo: userId },
-    )
+    // Build query filter
+    const queryFilter =
+      currentUser?.role === "admin" ? {} : { assignedTo: userId };
+    if (status) {
+      const validStatuses = ["Pending", "In Progress", "Completed"];
+      if (validStatuses.includes(status)) {
+        queryFilter.status = status;
+      }
+    }
+
+    // Find all tasks matching filter
+    const tasks = await Task.find(queryFilter)
       .populate("projectId")
       .sort({ createdAt: -1 });
 
@@ -384,51 +402,103 @@ export const getTaskById = async (req, res) => {
 export const updateTaskStatus = async (req, res) => {
   try {
     const { taskId } = req.params;
-    const { status } = req.body;
+    const { status, title, description, dueDate, assignedTo } = req.body;
+    const userId = req.user.uid;
+    const currentUser = await getCurrentUser(userId);
 
-    console.log("Task ID:", taskId);
-    console.log("Status:", status);
-
-    // validate status
-    const validStatuses = ["Pending", "In Progress", "Completed"];
-
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid status",
-      });
-    }
-
-    // update directly
-    const updatedTask = await Task.findByIdAndUpdate(
-      taskId,
-      {
-        status,
-        updatedAt: new Date(),
-      },
-      {
-        new: true,
-        runValidators: true,
-      },
-    );
-
-    if (!updatedTask) {
+    // Find the task first
+    const task = await Task.findById(taskId);
+    if (!task) {
       return res.status(404).json({
-        success: false,
+        status: "error",
         message: "Task not found",
       });
     }
 
+    // Authorization: user must be assignee, project member, or admin
+    const project = await Project.findById(task.projectId);
+    if (!project) {
+      return res.status(404).json({
+        status: "error",
+        message: "Associated project not found",
+      });
+    }
+
+    const isAssignee = (task.assignedTo || []).includes(userId);
+    const isProjectMember = (project.members || []).includes(userId);
+    const isAdmin = currentUser?.role === "admin";
+
+    if (!isAssignee && !isProjectMember && !isAdmin) {
+      return res.status(403).json({
+        status: "error",
+        message: "Forbidden: You are not authorized to update this task",
+      });
+    }
+
+    // Validate and apply status update
+    if (status !== undefined) {
+      const validStatuses = ["Pending", "In Progress", "Completed"];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({
+          status: "error",
+          message:
+            "Invalid status. Must be 'Pending', 'In Progress', or 'Completed'",
+        });
+      }
+      task.status = status;
+    }
+
+    // Only admins/creators can update other fields
+    if (isAdmin || task.createdBy === userId) {
+      if (title !== undefined && title.trim()) {
+        task.title = title.trim();
+      }
+      if (description !== undefined) {
+        task.description = description ? description.trim() : null;
+      }
+      if (dueDate !== undefined) {
+        task.dueDate = dueDate ? new Date(dueDate) : null;
+      }
+      if (assignedTo !== undefined) {
+        const assignedIds = normalizeAssignees(assignedTo, task.createdBy);
+        // Verify assignees are project members
+        const validMembers = [...new Set(project.members.map(String))];
+        const invalidAssignees = assignedIds.filter(
+          (memberId) => !validMembers.includes(memberId),
+        );
+        if (invalidAssignees.length > 0) {
+          return res.status(400).json({
+            status: "error",
+            message: "Assignees must be members of the project",
+          });
+        }
+        task.assignedTo = assignedIds;
+      }
+    }
+
+    task.updatedAt = new Date();
+    await task.save();
+
+    // Populate and enrich response
+    const populatedTask = await Task.findById(taskId).populate("projectId");
+    const userMap = await buildUserMap([
+      userId,
+      populatedTask.createdBy,
+      ...populatedTask.assignedTo,
+      ...(populatedTask.projectId?.members || []),
+      ...(populatedTask.submissions || []).map((item) => item.submittedBy),
+      ...(populatedTask.feedback || []).map((item) => item.addedBy),
+    ]);
+
     return res.status(200).json({
-      success: true,
+      status: "success",
       message: "Task updated successfully",
-      task: updatedTask,
+      data: taskToResponse(populatedTask, userMap),
     });
   } catch (error) {
-    console.error("UPDATE TASK ERROR:", error);
-
+    console.error("Update task error:", error.message);
     return res.status(500).json({
-      success: false,
+      status: "error",
       message: "Failed to update task",
       error: error.message,
     });
@@ -538,7 +608,7 @@ export const getOverdueTasks = async (req, res) => {
 export const saveTaskSubmission = async (req, res) => {
   try {
     const { taskId } = req.params;
-    const { content = "", status = "Draft" } = req.body;
+    const { content = "", status = "Draft", link = "" } = req.body;
 
     const task = await Task.findById(taskId).populate("projectId");
     const currentUser = await getCurrentUser(req.user.uid);
@@ -566,26 +636,17 @@ export const saveTaskSubmission = async (req, res) => {
         message: "Submission status must be Draft or Submitted",
       });
     }
-    const existingIndex = task.submissions.findIndex(
-      (submission) => submission.submittedBy === req.user.uid,
-    );
-
+    // Always create a new submission entry (preserve history)
     const submission = {
       submittedBy: req.user.uid,
       content: String(content),
+      link: String(link || ""),
       submittedAt: new Date(),
       status,
-      adminFeedback:
-        existingIndex >= 0
-          ? task.submissions[existingIndex].adminFeedback || ""
-          : "",
+      adminFeedback: "",
     };
 
-    if (existingIndex >= 0) {
-      task.submissions[existingIndex] = submission;
-    } else {
-      task.submissions.push(submission);
-    }
+    task.submissions.push(submission);
 
     if (status === "Submitted") {
       task.status = "In Progress";
@@ -624,7 +685,12 @@ export const saveTaskSubmission = async (req, res) => {
 export const addTaskFeedback = async (req, res) => {
   try {
     const { taskId } = req.params;
-    const { comment = "", status = "Info", submittedBy } = req.body;
+    const {
+      comment = "",
+      status = "Info",
+      submittedBy,
+      submissionIndex,
+    } = req.body;
 
     const currentUser = await getCurrentUser(req.user.uid);
     if (currentUser?.role !== "admin") {
@@ -655,17 +721,32 @@ export const addTaskFeedback = async (req, res) => {
       createdAt: new Date(),
     });
 
-    const targetSubmissionId =
-      submittedBy || task.submissions[task.submissions.length - 1]?.submittedBy;
-    if (targetSubmissionId) {
-      const targetSubmission = task.submissions.find(
-        (submission) => submission.submittedBy === targetSubmissionId,
-      );
-
-      if (targetSubmission) {
-        targetSubmission.adminFeedback = String(comment);
-        targetSubmission.status = status;
+    // Target a specific submission by index (preferred) or by submittedBy UID (fallback)
+    let targetSubmission = null;
+    if (
+      submissionIndex !== undefined &&
+      submissionIndex >= 0 &&
+      submissionIndex < task.submissions.length
+    ) {
+      targetSubmission = task.submissions[submissionIndex];
+    } else {
+      const targetUid =
+        submittedBy ||
+        task.submissions[task.submissions.length - 1]?.submittedBy;
+      if (targetUid) {
+        // Find the latest submission by that user
+        for (let i = task.submissions.length - 1; i >= 0; i--) {
+          if (task.submissions[i].submittedBy === targetUid) {
+            targetSubmission = task.submissions[i];
+            break;
+          }
+        }
       }
+    }
+
+    if (targetSubmission) {
+      targetSubmission.adminFeedback = String(comment);
+      targetSubmission.status = status;
     }
 
     if (status === "Accepted") {

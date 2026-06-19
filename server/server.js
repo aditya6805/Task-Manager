@@ -27,6 +27,15 @@ const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:5173")
   .map((origin) => origin.trim())
   .filter(Boolean);
 
+// Check if an origin is allowed (supports Vercel preview URLs)
+const isAllowedOrigin = (origin) => {
+  if (!origin) return true; // allow requests with no origin (mobile/postman)
+  if (allowedOrigins.includes(origin)) return true;
+  // Allow any Vercel deployment URL
+  if (/\.vercel\.app$/.test(origin)) return true;
+  return false;
+};
+
 // ============================================
 // Middleware
 // ============================================
@@ -35,13 +44,9 @@ const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:5173")
 app.use(
   cors({
     origin: function (origin, callback) {
-      // allow requests with no origin (mobile apps/postman)
-      if (!origin) return callback(null, true);
-
-      if (allowedOrigins.includes(origin)) {
+      if (isAllowedOrigin(origin)) {
         return callback(null, true);
       }
-
       return callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
