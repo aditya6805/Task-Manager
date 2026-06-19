@@ -82,6 +82,15 @@ const taskToResponse = (task, userMap) => {
           : { ...submission };
       return {
         ...plain,
+        // Ensure core fields are always present as strings, even if the
+        // document was created under an older schema version or if
+        // Mongoose toObject() strips defaults.
+        content: String(plain.content ?? ""),
+        link: String(plain.link ?? ""),
+        adminFeedback: String(plain.adminFeedback ?? ""),
+        status: plain.status || "Draft",
+        submittedBy: plain.submittedBy || "",
+        submittedAt: plain.submittedAt,
         submittedByUser: toUserSummary(
           userMap.get(submission.submittedBy),
           submission.submittedBy,
@@ -93,6 +102,10 @@ const taskToResponse = (task, userMap) => {
         typeof entry.toObject === "function" ? entry.toObject() : { ...entry };
       return {
         ...plain,
+        comment: String(plain.comment ?? ""),
+        status: plain.status || "Info",
+        addedBy: plain.addedBy || "",
+        createdAt: plain.createdAt,
         addedByUser: toUserSummary(userMap.get(entry.addedBy), entry.addedBy),
       };
     }),

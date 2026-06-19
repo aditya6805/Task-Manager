@@ -6,14 +6,35 @@
 import { Task, Project, User } from "../models/index.js";
 
 /**
+ * Build a plain task response object with populated project data.
+ * Replaces Mongoose populate + toObject with a direct plain-object build
+ * so it works identically for both Mongoose and in-memory models.
+ */
+const buildTaskResponse = (task) => {
+  const projectIdObj = task.projectId;
+  const plainProject =
+    projectIdObj && typeof projectIdObj.toObject === "function"
+      ? projectIdObj.toObject()
+      : projectIdObj;
+
+  const plain =
+    typeof task.toObject === "function" ? task.toObject() : { ...task };
+
+  return {
+    ...plain,
+    projectId: plainProject,
+    project: plainProject,
+  };
+};
+
+/**
  * Get dashboard data
  * GET /api/dashboard
  *
- * Returns comprehensive dashboard information:
- * - User's projects
- * - User's tasks by status
- * - Overdue tasks
- * - Recent activity
+ * Returns comprehensive dashboard information.
+ * All task statistics are derived from per-project task queries (the reliable
+ * query path) rather than top-level Task.find() calls, ensuring consistent
+ * results across both MongoDB and in-memory stores.
  *
  * @param {Object} req - Express request object
  * @returns {Object} Dashboard data object
@@ -69,7 +90,6 @@ export const getDashboard = async (req, res) => {
 
     // Admin sees ALL data; regular user sees only their own
     const isAdmin = user.role === "admin";
-    const taskFilter = isAdmin ? {} : { assignedTo: userId };
     const projectFilter = isAdmin ? {} : { members: userId };
 
     // 1. Get user's projects
@@ -77,84 +97,100 @@ export const getDashboard = async (req, res) => {
       createdAt: -1,
     });
 
-    // 2. Get task statistics
-    const allTasks = await Task.find(taskFilter);
+    // 2. Aggregate ALL task data from per-project queries (the reliable path)
+    //    This avoids separate top-level Task.find() calls that may return
+    //    different results on certain MongoDB/hosted environments.
+    const projectDetails = [];
+    let allUserTasks = []; // tasks visible to this user (scoped)
+    const allProjectTasks = []; // every task across fetched projects
 
+    for (const project of projects) {
+      const projectTasks = await Task.find({ projectId: project._id });
+      allProjectTasks.push(...projectTasks);
+
+      // Scope tasks to the current user (admin sees all; others see assigned)
+      const scopedTasks = isAdmin
+        ? projectTasks
+        : projectTasks.filter(
+            (t) =>
+              Array.isArray(t.assignedTo) && t.assignedTo.includes(userId),
+          );
+      allUserTasks.push(...scopedTasks);
+
+      projectDetails.push({
+        _id: project._id,
+        title: project.title,
+        description: project.description,
+        createdBy: project.createdBy,
+        memberCount: project.members.length,
+        taskCount: projectTasks.length,
+        taskStats: {
+          pending: projectTasks.filter((t) => t.status === "Pending").length,
+          inProgress: projectTasks.filter((t) => t.status === "In Progress")
+            .length,
+          completed: projectTasks.filter((t) => t.status === "Completed")
+            .length,
+        },
+        createdAt: project.createdAt,
+      });
+    }
+
+    // 3. Compute task statistics from aggregated data
     const taskStats = {
-      total: allTasks.length,
-      pending: allTasks.filter((t) => t.status === "Pending").length,
-      inProgress: allTasks.filter((t) => t.status === "In Progress").length,
-      completed: allTasks.filter((t) => t.status === "Completed").length,
+      total: allUserTasks.length,
+      pending: allUserTasks.filter((t) => t.status === "Pending").length,
+      inProgress: allUserTasks.filter((t) => t.status === "In Progress")
+        .length,
+      completed: allUserTasks.filter((t) => t.status === "Completed").length,
     };
 
-    // 3. Get overdue tasks
-    const overdueTasks = await Task.find({
-      ...taskFilter,
-      status: { $ne: "Completed" },
-      dueDate: { $lt: now, $ne: null },
-    })
-      .populate("projectId")
-      .sort({ dueDate: 1 });
-
-    // 4. Get pending tasks in detail
-    const pendingTasks = await Task.find({
-      ...taskFilter,
-      status: "Pending",
-    })
-      .populate("projectId")
-      .sort({ createdAt: -1 });
-
-    // 5. Get in-progress tasks in detail
-    const inProgressTasks = await Task.find({
-      ...taskFilter,
-      status: "In Progress",
-    })
-      .populate("projectId")
-      .sort({ createdAt: -1 });
-
-    // 6. Get project details with task counts
-    const projectDetails = await Promise.all(
-      projects.map(async (project) => {
-        const projectTasks = await Task.find({ projectId: project._id });
-        return {
-          _id: project._id,
-          title: project.title,
-          description: project.description,
-          createdBy: project.createdBy,
-          memberCount: project.members.length,
-          taskCount: projectTasks.length,
-          taskStats: {
-            pending: projectTasks.filter((t) => t.status === "Pending").length,
-            inProgress: projectTasks.filter((t) => t.status === "In Progress")
-              .length,
-            completed: projectTasks.filter((t) => t.status === "Completed")
-              .length,
-          },
-          createdAt: project.createdAt,
-        };
-      }),
-    );
-
-    // 7. Get completion rate
-    const completedTasks = allTasks.filter(
-      (t) => t.status === "Completed",
-    ).length;
+    // 4. Completion rate
+    const completedTasks = taskStats.completed;
     const completionRate =
-      allTasks.length > 0
-        ? Math.round((completedTasks / allTasks.length) * 100)
+      allUserTasks.length > 0
+        ? Math.round((completedTasks / allUserTasks.length) * 100)
         : 0;
 
-    // 8. Get upcoming tasks (due in next 7 days)
+    // 5. Categorize tasks (overdue, pending, in-progress, upcoming)
     const nextWeek = new Date();
     nextWeek.setDate(nextWeek.getDate() + 7);
 
-    const upcomingTasks = await Task.find({
-      ...taskFilter,
-      status: { $ne: "Completed" },
-      dueDate: { $gte: now, $lte: nextWeek },
-    })
-      .populate("projectId")
-      .sort({ dueDate: 1 });
+    const overdueTasks = allUserTasks
+      .filter(
+        (t) =>
+          t.status !== "Completed" &&
+          t.dueDate &&
+          new Date(t.dueDate) < now,
+      )
+      .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
+      .map(buildTaskResponse);
+
+    const pendingTasks = allUserTasks
+      .filter((t) => t.status === "Pending")
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt || 0) - new Date(a.createdAt || 0),
+      )
+      .map(buildTaskResponse);
+
+    const inProgressTasks = allUserTasks
+      .filter((t) => t.status === "In Progress")
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt || 0) - new Date(a.createdAt || 0),
+      )
+      .map(buildTaskResponse);
+
+    const upcomingTasks = allUserTasks
+      .filter(
+        (t) =>
+          t.status !== "Completed" &&
+          t.dueDate &&
+          new Date(t.dueDate) >= now &&
+          new Date(t.dueDate) <= nextWeek,
+      )
+      .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
+      .map(buildTaskResponse);
 
     res.status(200).json({
       status: "success",
@@ -216,7 +252,7 @@ export const getDashboard = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("❌ Dashboard error:", error.message);
+    console.error("\u274c Dashboard error:", error.message);
     res.status(500).json({
       status: "error",
       message: "Failed to retrieve dashboard data",
@@ -242,44 +278,59 @@ export const getDashboardStats = async (req, res) => {
     // Admin sees all tasks; regular user sees only assigned
     const user = await User.findOne({ firebaseUID: userId });
     const isAdmin = user?.role === "admin";
-    const taskFilter = isAdmin ? {} : { assignedTo: userId };
+    const projectFilter = isAdmin ? {} : { members: userId };
 
-    // Get task statistics
-    const allTasks = await Task.find(taskFilter);
-    const overdueTasks = await Task.find({
-      ...taskFilter,
-      status: { $ne: "Completed" },
-      dueDate: { $lt: now, $ne: null },
-    });
+    // Aggregate tasks from per-project queries (the reliable path)
+    const projects = await Project.find(projectFilter);
+    let allUserTasks = [];
 
-    const completedTasks = allTasks.filter(
+    for (const project of projects) {
+      const projectTasks = await Task.find({ projectId: project._id });
+      if (isAdmin) {
+        allUserTasks.push(...projectTasks);
+      } else {
+        allUserTasks.push(
+          ...projectTasks.filter(
+            (t) =>
+              Array.isArray(t.assignedTo) && t.assignedTo.includes(userId),
+          ),
+        );
+      }
+    }
+
+    const overdueTasks = allUserTasks.filter(
+      (t) =>
+        t.status !== "Completed" &&
+        t.dueDate &&
+        new Date(t.dueDate) < now,
+    );
+
+    const completedTasks = allUserTasks.filter(
       (t) => t.status === "Completed",
     ).length;
     const completionRate =
-      allTasks.length > 0
-        ? Math.round((completedTasks / allTasks.length) * 100)
+      allUserTasks.length > 0
+        ? Math.round((completedTasks / allUserTasks.length) * 100)
         : 0;
 
-    const projectCount = await Project.countDocuments(
-      isAdmin ? {} : { members: userId },
-    );
+    const projectCount = projects.length;
 
     res.status(200).json({
       status: "success",
       message: "Dashboard statistics retrieved successfully",
       data: {
         projectCount,
-        totalTasks: allTasks.length,
+        totalTasks: allUserTasks.length,
         completedTasks,
-        pendingTasks: allTasks.filter((t) => t.status === "Pending").length,
-        inProgressTasks: allTasks.filter((t) => t.status === "In Progress")
+        pendingTasks: allUserTasks.filter((t) => t.status === "Pending").length,
+        inProgressTasks: allUserTasks.filter((t) => t.status === "In Progress")
           .length,
         overdueTasks: overdueTasks.length,
         completionRate: `${completionRate}%`,
       },
     });
   } catch (error) {
-    console.error("❌ Dashboard stats error:", error.message);
+    console.error("\u274c Dashboard stats error:", error.message);
     res.status(500).json({
       status: "error",
       message: "Failed to retrieve dashboard statistics",
