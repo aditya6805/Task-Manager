@@ -64,7 +64,7 @@ export default function Signup() {
 
   return (
     <div className="min-h-screen bg-white flex items-center justify-center py-12 px-4">
-      <div className="w-full max-w-md bg-white border border-gray-200 rounded p-8">
+      <div className="w-full max-w-md bg-white border border-gray-200 rounded p-6 sm:p-8">
         {/* Header */}
         <div className="text-center mb-8">
           <h2 className="text-2xl font-bold text-gray-800">Team Task Manager</h2>

@@ -2,7 +2,7 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuthContext } from '../context/AuthContext'
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen, onClose }) {
     const { logout } = useAuthContext()
     const navigate = useNavigate()
 
@@ -15,8 +15,22 @@ export default function Sidebar() {
       }
     }
 
+    const handleNavClick = () => {
+      // Close sidebar on mobile after clicking a link
+      if (window.innerWidth < 1024) {
+        onClose?.()
+      }
+    }
+
   return (
-    <aside className="w-64 bg-white border-r border-gray-200 h-screen overflow-y-auto">
+    <aside
+      className={`
+        fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200
+        transform transition-transform duration-200 ease-in-out
+        lg:relative lg:translate-x-0 lg:z-auto
+        ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+      `}
+    >
       <div className="p-6">
         <h2 className="text-lg font-bold text-gray-800 mb-2">Task Manager</h2>
         <p className="text-xs text-gray-500">Team Task Manager</p>
@@ -26,6 +40,7 @@ export default function Sidebar() {
           <li>
             <Link 
               to="/dashboard" 
+              onClick={handleNavClick}
               className="block px-4 py-2 text-sm text-gray-700 rounded hover:bg-gray-100 transition"
             >
               📊 Dashboard
@@ -34,6 +49,7 @@ export default function Sidebar() {
           <li>
             <Link 
               to="/projects" 
+              onClick={handleNavClick}
               className="block px-4 py-2 text-sm text-gray-700 rounded hover:bg-gray-100 transition"
             >
               📁 Projects
@@ -42,6 +58,7 @@ export default function Sidebar() {
           <li>
             <Link 
               to="/tasks" 
+              onClick={handleNavClick}
               className="block px-4 py-2 text-sm text-gray-700 rounded hover:bg-gray-100 transition"
             >
               ✓ Tasks

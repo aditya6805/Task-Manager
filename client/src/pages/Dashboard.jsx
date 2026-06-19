@@ -76,13 +76,13 @@ export default function Dashboard() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">Dashboard</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Dashboard</h1>
         <span className="text-sm text-gray-600 capitalize">Role: {role}</span>
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
         <DashboardStatCard title="Total Tasks" value={dashboard.stats?.totalTasks || 0} icon="📋" color="blue" />
         <DashboardStatCard title="Completed" value={dashboard.stats?.completedTasks || 0} icon="✓" color="green" />
         <DashboardStatCard title="Pending" value={dashboard.stats?.pendingTasks || 0} icon="⏳" color="amber" />
@@ -90,8 +90,8 @@ export default function Dashboard() {
       </div>
 
       {/* Tasks by Status and Projects */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <div className="bg-white border border-gray-200 rounded p-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
+        <div className="bg-white border border-gray-200 rounded p-4 sm:p-6">
           <h2 className="text-lg font-semibold text-gray-800 mb-4">Tasks by Status</h2>
           <div className="space-y-3">
             {Object.entries(dashboard.tasksByStatus || {}).map(([status, count]) => (
@@ -106,14 +106,14 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded p-6">
+        <div className="bg-white border border-gray-200 rounded p-4 sm:p-6">
           <h2 className="text-lg font-semibold text-gray-800 mb-4">Projects Overview</h2>
           {(dashboard.projects || []).length > 0 ? (
             <div className="space-y-3">
               {(dashboard.projects || []).slice(0, 5).map((project) => (
-                <div key={project._id} className="flex items-center justify-between pb-3 border-b border-gray-200 last:border-0">
-                  <div><p className="font-medium text-gray-800">{project.title}</p><p className="text-xs text-gray-500">{project.taskCount} tasks</p></div>
-                  <span className="text-sm text-gray-600">{project.memberCount ?? project.members?.length ?? 0} members</span>
+                <div key={project._id} className="flex items-center justify-between pb-3 border-b border-gray-200 last:border-0 gap-2">
+                  <div className="min-w-0"><p className="font-medium text-gray-800 truncate">{project.title}</p><p className="text-xs text-gray-500">{project.taskCount} tasks</p></div>
+                  <span className="text-sm text-gray-600 shrink-0">{project.memberCount ?? project.members?.length ?? 0} members</span>
                 </div>
               ))}
             </div>
@@ -125,12 +125,12 @@ export default function Dashboard() {
 
       {/* Overdue Tasks */}
       {dashboard.overdueTasks && dashboard.overdueTasks.length > 0 && (
-        <div className="bg-red-50 border border-red-200 rounded p-6">
-          <h2 className="text-lg font-semibold text-red-900 mb-4">⚠️ Overdue Tasks ({dashboard.overdueTasks.length})</h2>
+        <div className="bg-red-50 border border-red-200 rounded p-4 sm:p-6">
+          <h2 className="text-base sm:text-lg font-semibold text-red-900 mb-4">⚠️ Overdue Tasks ({dashboard.overdueTasks.length})</h2>
           <div className="space-y-2">
             {dashboard.overdueTasks.map((task) => (
-              <div key={task._id} className="flex items-center justify-between p-2 bg-white rounded border border-red-100">
-                <div><p className="font-medium text-gray-800">{task.title}</p><p className="text-xs text-gray-500">Due: {new Date(task.dueDate).toLocaleDateString()}</p></div>
+              <div key={task._id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-2 bg-white rounded border border-red-100 gap-1">
+                <div className="min-w-0"><p className="font-medium text-gray-800 truncate">{task.title}</p><p className="text-xs text-gray-500">Due: {new Date(task.dueDate).toLocaleDateString()}</p></div>
                 <span className="text-xs font-medium text-red-600">Overdue</span>
               </div>
             ))}

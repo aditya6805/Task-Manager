@@ -170,8 +170,8 @@ export default function Projects() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">Projects</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Projects</h1>
         {role === 'admin' && (
           <button
             onClick={handleCreateClick}
@@ -183,14 +183,14 @@ export default function Projects() {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-600 px-6 py-4 rounded mb-6">
+        <div className="bg-red-50 border border-red-200 text-red-600 px-4 sm:px-6 py-4 rounded mb-6 text-sm">
           {error}
         </div>
       )}
 
       {/* Create/Edit Project Form */}
       {role === 'admin' && showForm && (
-        <div className="bg-white border border-gray-200 rounded p-6 mb-8">
+        <div className="bg-white border border-gray-200 rounded p-4 sm:p-6 mb-6 sm:mb-8">
           <h2 className="text-lg font-semibold text-gray-800 mb-4">
             {editingProject ? 'Edit Project' : 'Create New Project'}
           </h2>
@@ -218,7 +218,7 @@ export default function Projects() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {projects.map((project) => (
             <ProjectCard
               key={project._id}

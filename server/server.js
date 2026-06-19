@@ -6,6 +6,7 @@ import { connectDB } from "./config/database.js";
 import { initializeFirebase } from "./config/firebase.js";
 
 import { authMiddleware, errorHandler } from "./middleware/auth.js";
+import { useInMemoryStore } from "./models/index.js";
 
 import taskRoutes from "./routes/taskRoutes.js";
 import projectRoutes from "./routes/projectRoutes.js";
@@ -82,6 +83,7 @@ const initializeServer = async () => {
       res.json({
         status: "success",
         message: "Server is running",
+        store: useInMemoryStore ? "in-memory" : "mongodb",
         timestamp: new Date().toISOString(),
       });
     });
@@ -128,8 +130,11 @@ const initializeServer = async () => {
     // ============================================
 
     app.listen(PORT, () => {
-      console.log(`✅ Server running on port ${PORT}`);
-      console.log(`✅ Allowed Origins: ${allowedOrigins.join(", ")}`);
+      console.log(`\u2705 Server running on port ${PORT}`);
+      console.log(`\u2705 Allowed Origins: ${allowedOrigins.join(", ")}`);
+      console.log(
+        `\u2705 Data store: ${useInMemoryStore ? "\u26a0\ufe0f  IN-MEMORY (data lost on restart)" : "MongoDB (persistent)"}`,
+      );
     });
   } catch (error) {
     console.error("❌ Failed to initialize server:", error.message);

@@ -215,17 +215,17 @@ export default function TaskDetail() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-600 px-6 py-4 rounded">
+        <div className="bg-red-50 border border-red-200 text-red-600 px-4 sm:px-6 py-3 sm:py-4 rounded text-sm">
           {error}
         </div>
       )}
 
       {/* Task Details */}
-      <div className="bg-white border border-gray-200 rounded p-6">
-        <div className="flex items-start justify-between gap-4 mb-4">
-          <div>
+      <div className="bg-white border border-gray-200 rounded p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-4">
+          <div className="min-w-0">
             <p className="text-xs text-gray-500 mb-1">
               Project:{' '}
               <Link
@@ -235,35 +235,34 @@ export default function TaskDetail() {
                 {task.project?.title || task.projectId?.title || 'Unknown project'}
               </Link>
             </p>
-            <h1 className="text-3xl font-bold text-gray-800">{task.title}</h1>
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800 break-words">{task.title}</h1>
             <p className="mt-2 text-sm text-gray-600">{task.description || 'No description provided.'}</p>
           </div>
-          <Link to="/tasks" className="text-sm text-slate-700 hover:underline">
+          <Link to="/tasks" className="text-sm text-slate-700 hover:underline shrink-0">
             Back to Tasks
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-          <div className="border border-gray-200 rounded p-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 text-sm">
+          <div className="border border-gray-200 rounded p-3 sm:p-4">
             <p className="text-xs text-gray-500">Status</p>
             <p className="font-medium text-gray-800">{task.status}</p>
           </div>
-          <div className="border border-gray-200 rounded p-4">
+          <div className="border border-gray-200 rounded p-3 sm:p-4">
             <p className="text-xs text-gray-500">Due Date</p>
             <p className="font-medium text-gray-800">{task.dueDate ? new Date(task.dueDate).toLocaleDateString() : '-'}</p>
           </div>
-          <div className="border border-gray-200 rounded p-4">
+          <div className="border border-gray-200 rounded p-3 sm:p-4">
             <p className="text-xs text-gray-500">Owner</p>
-            <p className="font-medium text-gray-800">{task.createdByUser?.name || task.createdByUser?.email || task.createdBy || '-'}</p>
+            <p className="font-medium text-gray-800 truncate">{task.createdByUser?.name || task.createdByUser?.email || task.createdBy || '-'}</p>
           </div>
-          <div className="border border-gray-200 rounded p-4">
+          <div className="border border-gray-200 rounded p-3 sm:p-4">
             <p className="text-xs text-gray-500">Assigned Members</p>
             <div className="mt-1 space-y-1">
               {assignedMembers.length > 0 ? (
                 assignedMembers.map((member) => (
-                  <p key={member.firebaseUID} className="font-medium text-gray-800">
+                  <p key={member.firebaseUID} className="font-medium text-gray-800 truncate text-xs sm:text-sm">
                     {member.name || member.email || member.firebaseUID}
-                    {member.email ? ` (${member.email})` : ''}
                   </p>
                 ))
               ) : (
@@ -276,20 +275,20 @@ export default function TaskDetail() {
 
       {/* Admin Controls - directly below Task Details (admin only) */}
       {isAdmin && (
-        <div className="bg-white border border-gray-200 rounded p-6">
+        <div className="bg-white border border-gray-200 rounded p-4 sm:p-6">
           <h2 className="text-lg font-semibold text-gray-800 mb-4">Admin Controls</h2>
 
           {!isEditingTask ? (
             <button
               type="button"
               onClick={() => setIsEditingTask(true)}
-              className="px-4 py-2 text-white bg-slate-700 rounded hover:bg-slate-800 transition"
+              className="px-4 py-2 text-white bg-slate-700 rounded hover:bg-slate-800 transition text-sm"
             >
               Edit Task
             </button>
           ) : (
             <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
                   <input
@@ -359,12 +358,12 @@ export default function TaskDetail() {
                 </select>
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex flex-wrap gap-3">
                 <button
                   type="button"
                   onClick={saveTaskChanges}
                   disabled={editSaving}
-                  className="px-4 py-2 text-white bg-slate-700 rounded hover:bg-slate-800 transition disabled:opacity-50"
+                  className="px-4 py-2 text-white bg-slate-700 rounded hover:bg-slate-800 transition disabled:opacity-50 text-sm"
                 >
                   {editSaving ? 'Saving...' : 'Save Task Changes'}
                 </button>
@@ -372,7 +371,7 @@ export default function TaskDetail() {
                   type="button"
                   onClick={() => setIsEditingTask(false)}
                   disabled={editSaving}
-                  className="px-4 py-2 text-gray-700 border border-gray-300 rounded hover:bg-gray-50 transition disabled:opacity-50"
+                  className="px-4 py-2 text-gray-700 border border-gray-300 rounded hover:bg-gray-50 transition disabled:opacity-50 text-sm"
                 >
                   Cancel
                 </button>
@@ -383,13 +382,13 @@ export default function TaskDetail() {
       )}
 
       {/* User Submission Area */}
-      <div className="bg-white border border-gray-200 rounded p-6">
+      <div className="bg-white border border-gray-200 rounded p-4 sm:p-6">
         <h2 className="text-lg font-semibold text-gray-800 mb-4">Your Submission</h2>
         <textarea
           value={submissionText}
           onChange={(e) => setSubmissionText(e.target.value)}
-          rows="8"
-          className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-slate-500 focus:border-slate-500"
+          rows={window.innerWidth < 640 ? 5 : 8}
+          className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-slate-500 focus:border-slate-500 text-sm sm:text-base"
           placeholder="Write your contribution or progress here..."
         />
         <div className="mt-3">
@@ -398,7 +397,7 @@ export default function TaskDetail() {
             type="url"
             value={submissionLink}
             onChange={(e) => setSubmissionLink(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-slate-500 focus:border-slate-500"
+            className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-slate-500 focus:border-slate-500 text-sm"
             placeholder="https://github.com/... or any link"
           />
         </div>
@@ -407,7 +406,7 @@ export default function TaskDetail() {
           <select
             value={submissionStatus}
             onChange={(e) => setSubmissionStatus(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-slate-500 focus:border-slate-500"
+            className="w-full sm:w-auto px-3 sm:px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-slate-500 focus:border-slate-500 text-sm"
           >
             <option value="Draft">Draft</option>
             <option value="Submitted">Submitted</option>
@@ -430,7 +429,7 @@ export default function TaskDetail() {
           >
             Submit Work
           </button>
-          <div className="text-xs text-gray-500 self-center">Current status: {submissionStatus}</div>
+          <div className="text-xs text-gray-500 self-center w-full sm:w-auto">Current status: {submissionStatus}</div>
         </div>
         {currentSubmission && (
           <p className="mt-3 text-xs text-gray-500">
@@ -440,28 +439,28 @@ export default function TaskDetail() {
       </div>
 
       {/* Submission History */}
-      <div className="bg-white border border-gray-200 rounded p-6">
+      <div className="bg-white border border-gray-200 rounded p-4 sm:p-6">
         <h2 className="text-lg font-semibold text-gray-800 mb-4">Submission History</h2>
         <div className="space-y-3">
           {(task.submissions || []).length > 0 ? (
             task.submissions.map((submission, index) => (
-              <div key={`submission-${index}`} className="border border-gray-200 rounded p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div>
-                    <p className="text-sm font-medium text-gray-800">
+              <div key={`submission-${index}`} className="border border-gray-200 rounded p-3 sm:p-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-800 truncate">
                       Submission #{index + 1} &mdash; {submission.submittedByUser?.name || submission.submittedByUser?.email || submission.submittedBy}
                     </p>
                     <p className="text-xs text-gray-500">
                       {submission.submittedAt ? new Date(submission.submittedAt).toLocaleString() : '-'}
                     </p>
                   </div>
-                  <span className={`text-xs font-medium px-2 py-1 rounded ${getStatusBadgeColor(submission.status)}`}>
+                  <span className={`text-xs font-medium px-2 py-1 rounded shrink-0 self-start ${getStatusBadgeColor(submission.status)}`}>
                     {submission.status}
                   </span>
                 </div>
-                <p className="text-sm text-gray-600 whitespace-pre-wrap">{submission.content || 'No content.'}</p>
+                <p className="text-sm text-gray-600 whitespace-pre-wrap break-words">{submission.content || 'No content.'}</p>
                 {submission.link && (
-                  <p className="mt-1 text-xs text-blue-600">
+                  <p className="mt-1 text-xs text-blue-600 break-all">
                     Link: <a href={submission.link} target="_blank" rel="noopener noreferrer" className="underline">{submission.link}</a>
                   </p>
                 )}
@@ -492,8 +491,8 @@ export default function TaskDetail() {
                     <textarea
                       value={reviewText}
                       onChange={(e) => setReviewText(e.target.value)}
-                      rows="3"
-                      className="w-full px-4 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-slate-500 focus:border-slate-500"
+                      rows={3}
+                      className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-slate-500 focus:border-slate-500"
                       placeholder="Write review feedback..."
                     />
                     <div className="flex flex-wrap gap-2">

@@ -7,14 +7,14 @@ export default function DashboardStatCard({ title, value, icon, color }) {
   }
 
   return (
-    <div className="bg-white border border-gray-200 rounded p-6">
+    <div className="bg-white border border-gray-200 rounded p-4 sm:p-6">
       <div className="flex items-center">
         <div className={`p-3 rounded-lg ${colorClasses[color] || colorClasses.blue}`}>
           <span className="text-2xl">{icon}</span>
         </div>
         <div className="ml-4">
           <p className="text-sm text-gray-600">{title}</p>
-          <p className="text-2xl font-bold text-gray-800">{value}</p>
+          <p className="text-2xl sm:text-3xl font-bold text-gray-800">{value}</p>
         </div>
       </div>
     </div>

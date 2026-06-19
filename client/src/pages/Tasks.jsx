@@ -153,8 +153,8 @@ export default function Tasks() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">Tasks</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Tasks</h1>
         {role === 'admin' && (
           <button
             onClick={handleCreateClick}
@@ -166,14 +166,14 @@ export default function Tasks() {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-600 px-6 py-4 rounded mb-6">
+        <div className="bg-red-50 border border-red-200 text-red-600 px-4 sm:px-6 py-4 rounded mb-6 text-sm">
           {error}
         </div>
       )}
 
       {/* Create/Edit Task Form */}
       {role === 'admin' && showForm && (
-        <div className="bg-white border border-gray-200 rounded p-6 mb-8">
+        <div className="bg-white border border-gray-200 rounded p-4 sm:p-6 mb-6 sm:mb-8">
           <h2 className="text-lg font-semibold text-gray-800 mb-4">
             {editingTask ? 'Edit Task' : 'Create New Task'}
           </h2>
@@ -197,7 +197,7 @@ export default function Tasks() {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-slate-500 focus:border-slate-500"
+          className="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-slate-500 focus:border-slate-500"
         >
           <option value="">All Tasks</option>
           <option value="Pending">Pending</option>
@@ -212,120 +212,182 @@ export default function Tasks() {
           <p className="text-gray-500">Loading tasks...</p>
         </div>
       ) : tasks.length === 0 ? (
-        <div className="bg-white border border-gray-200 rounded p-12 text-center">
+        <div className="bg-white border border-gray-200 rounded p-8 sm:p-12 text-center">
           <p className="text-gray-500">
             {statusFilter ? 'No tasks found with this status.' : 'No tasks assigned to you yet.'}
           </p>
         </div>
       ) : (
-        <div className="bg-white border border-gray-200 rounded overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Title
-                </th>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Due Date
-                </th>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Project
-                </th>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Creator
-                </th>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Assigned To
-                </th>
-                {role === 'admin' && (
+        <>
+          {/* Desktop Table View */}
+          <div className="hidden md:block bg-white border border-gray-200 rounded overflow-hidden">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
                   <th className="text-left px-6 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Actions
+                    Title
                   </th>
-                )}
-              </tr>
-            </thead>
-            <tbody>
-              {tasks.map((task, index) => (
-                <tr
-                  key={task._id}
-                  className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
-                >
-                  <td className="px-6 py-4 text-sm text-gray-900">
-                    <Link to={`/tasks/${task._id}`} className="font-medium text-slate-700 hover:underline">
-                      {task.title}
-                    </Link>
-                    {task.description && (
-                      <p className="mt-1 text-xs text-gray-500">{task.description}</p>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 text-sm">
-                    <select
-                      value={task.status}
-                      onChange={(e) => handleStatusChange(task._id, e.target.value)}
-                      className={`px-3 py-1 rounded text-xs font-medium cursor-pointer ${getStatusColor(
-                        task.status
-                      )}`}
-                    >
-                      <option value="Pending">Pending</option>
-                      <option value="In Progress">In Progress</option>
-                      <option value="Completed">Completed</option>
-                    </select>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">
-                    {task.dueDate ? (
-                      <span
-                        className={
-                          isOverdue(task.dueDate) ? 'text-red-600 font-medium' : ''
-                        }
+                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    Due Date
+                  </th>
+                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    Project
+                  </th>
+                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    Assigned To
+                  </th>
+                  {role === 'admin' && (
+                    <th className="text-left px-6 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  )}
+                </tr>
+              </thead>
+              <tbody>
+                {tasks.map((task, index) => (
+                  <tr
+                    key={task._id}
+                    className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
+                  >
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      <Link to={`/tasks/${task._id}`} className="font-medium text-slate-700 hover:underline">
+                        {task.title}
+                      </Link>
+                      {task.description && (
+                        <p className="mt-1 text-xs text-gray-500">{task.description}</p>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-sm">
+                      <select
+                        value={task.status}
+                        onChange={(e) => handleStatusChange(task._id, e.target.value)}
+                        className={`px-3 py-1 rounded text-xs font-medium cursor-pointer ${getStatusColor(
+                          task.status
+                        )}`}
                       >
+                        <option value="Pending">Pending</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Completed">Completed</option>
+                      </select>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600">
+                      {task.dueDate ? (
+                        <span
+                          className={
+                            isOverdue(task.dueDate) ? 'text-red-600 font-medium' : ''
+                          }
+                        >
+                          {new Date(task.dueDate).toLocaleDateString()}
+                          {isOverdue(task.dueDate) && ' (Overdue)'}
+                        </span>
+                      ) : (
+                        '-'
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600">
+                      <Link to={`/projects/${task.projectId?._id || task.projectId}`} className="hover:underline text-slate-700">
+                        {task.projectId?.title || 'Unknown'}
+                      </Link>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600">
+                      {(task.assignedToUsers || []).length > 0
+                        ? task.assignedToUsers
+                            .map((member) => member.name || member.email || member.firebaseUID)
+                            .join(', ')
+                        : '-'}
+                    </td>
+                    {role === 'admin' && (
+                      <td className="px-6 py-4 text-sm">
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleEditClick(task)}
+                            className="px-2 py-1 text-xs text-slate-600 border border-slate-300 rounded hover:bg-slate-50 transition"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteClick(task)}
+                            className="px-2 py-1 text-xs text-red-600 border border-red-300 rounded hover:bg-red-50 transition"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile Card View */}
+          <div className="md:hidden space-y-3">
+            {tasks.map((task) => (
+              <div key={task._id} className="bg-white border border-gray-200 rounded p-4">
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <Link to={`/tasks/${task._id}`} className="font-medium text-slate-700 hover:underline text-sm">
+                    {task.title}
+                  </Link>
+                  <select
+                    value={task.status}
+                    onChange={(e) => handleStatusChange(task._id, e.target.value)}
+                    className={`px-2 py-1 rounded text-xs font-medium cursor-pointer shrink-0 ${getStatusColor(
+                      task.status
+                    )}`}
+                  >
+                    <option value="Pending">Pending</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Completed">Completed</option>
+                  </select>
+                </div>
+                {task.description && (
+                  <p className="text-xs text-gray-500 mb-2">{task.description}</p>
+                )}
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 mb-2">
+                  <span>
+                    Due: {task.dueDate ? (
+                      <span className={isOverdue(task.dueDate) ? 'text-red-600 font-medium' : ''}>
                         {new Date(task.dueDate).toLocaleDateString()}
                         {isOverdue(task.dueDate) && ' (Overdue)'}
                       </span>
-                    ) : (
-                      '-'
-                    )}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">
-                    <Link to={`/projects/${task.projectId?._id || task.projectId}`} className="hover:underline text-slate-700">
+                    ) : '-'}
+                  </span>
+                  <span>
+                    Project: <Link to={`/projects/${task.projectId?._id || task.projectId}`} className="text-slate-700 hover:underline">
                       {task.projectId?.title || 'Unknown'}
                     </Link>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">
-                    {task.createdByUser?.name || task.createdByUser?.email || task.createdBy || '-'}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">
-                    {(task.assignedToUsers || []).length > 0
-                      ? task.assignedToUsers
-                          .map((member) => member.name || member.email || member.firebaseUID)
-                          .join(', ')
-                      : '-'}
-                  </td>
-                  {role === 'admin' && (
-                    <td className="px-6 py-4 text-sm">
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleEditClick(task)}
-                          className="px-2 py-1 text-xs text-slate-600 border border-slate-300 rounded hover:bg-slate-50 transition"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDeleteClick(task)}
-                          className="px-2 py-1 text-xs text-red-600 border border-red-300 rounded hover:bg-red-50 transition"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  </span>
+                </div>
+                <div className="text-xs text-gray-500">
+                  Assigned: {(task.assignedToUsers || []).length > 0
+                    ? task.assignedToUsers
+                        .map((member) => member.name || member.email || member.firebaseUID)
+                        .join(', ')
+                    : '-'}
+                </div>
+                {role === 'admin' && (
+                  <div className="flex gap-2 mt-3 pt-3 border-t border-gray-200">
+                    <button
+                      onClick={() => handleEditClick(task)}
+                      className="px-3 py-1.5 text-xs text-slate-600 border border-slate-300 rounded hover:bg-slate-50 transition"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeleteClick(task)}
+                      className="px-3 py-1.5 text-xs text-red-600 border border-red-300 rounded hover:bg-red-50 transition"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       {/* Delete Confirmation */}

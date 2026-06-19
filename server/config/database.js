@@ -5,7 +5,7 @@ const isPlaceholderMongoUri = (mongoURI) => {
     return true;
   }
 
-  return /username:password|<db_password>|your_mongodb_connection_string|cluster\.mongodb\.net|<your-mongodb-url>|your_mongodb_url/i.test(
+  return /username:password|<db_password>|your_mongodb_connection_string|<your-mongodb-url>|your_mongodb_url/i.test(
     mongoURI,
   );
 };
@@ -20,13 +20,17 @@ export const connectDB = async () => {
 
     if (isPlaceholderMongoUri(mongoURI)) {
       console.warn(
-        "⚠️ MONGODB_URI is missing or looks like a placeholder. Using the in-memory model store for local development.",
+        "⚠️ MONGODB_URI is missing or looks like a placeholder. Using the in-memory model store.",
+      );
+      console.warn(
+        "   ➜ Set MONGODB_URI environment variable to your MongoDB Atlas connection string for persistent data.",
       );
       return;
     }
 
     await mongoose.connect(mongoURI);
     console.log("✓ MongoDB connected successfully");
+    console.log(`  ➜ Connected to: ${mongoose.connection.host}`);
   } catch (error) {
     console.error("❌ Database connection error:", error.message);
     throw error;

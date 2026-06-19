@@ -30,7 +30,7 @@ const readMongoUriHint = () => {
 const mongoUriHint = readMongoUriHint();
 const useInMemoryStore =
   !mongoUriHint ||
-  /username:password|<db_password>|your_mongodb_connection_string|cluster\.mongodb\.net|<your-mongodb-url>|your_mongodb_url/i.test(
+  /username:password|<db_password>|your_mongodb_connection_string|<your-mongodb-url>|your_mongodb_url/i.test(
     mongoUriHint,
   );
 

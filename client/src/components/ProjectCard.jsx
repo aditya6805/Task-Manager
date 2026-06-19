@@ -12,7 +12,7 @@ export default function ProjectCard({
 
   return (
     <div
-      className="bg-white border border-gray-200 rounded p-6 hover:shadow-md transition cursor-pointer"
+      className="bg-white border border-gray-200 rounded p-4 sm:p-6 hover:shadow-md transition cursor-pointer"
       onClick={() => onOpen?.(project)}
       role="button"
       tabIndex={0}
@@ -27,13 +27,13 @@ export default function ProjectCard({
         {project.description || 'No description'}
       </p>
 
-      <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-4 border-t border-gray-200">
         <div className="text-xs text-gray-500">
-          <p>{project.projectId || 'Project ID pending'}</p>
+          <p className="truncate">{project.projectId || 'Project ID pending'}</p>
           <p>{project.members?.length || 0} members</p>
         </div>
         {isAdmin && (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={(event) => {
                 event.stopPropagation()

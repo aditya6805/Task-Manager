@@ -162,19 +162,19 @@ export default function ProjectForm({
         <p className="mt-1 text-xs text-gray-500">Creator is automatically included. Select only the members you want on the project.</p>
       </div>
 
-      <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+      <div className="flex flex-col sm:flex-row sm:justify-end gap-3 pt-4 border-t border-gray-200">
         <button
           type="button"
           onClick={onCancel}
           disabled={loading}
-          className="px-4 py-2 text-gray-700 border border-gray-300 rounded hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+          className="w-full sm:w-auto px-4 py-2 text-gray-700 border border-gray-300 rounded hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
         >
           Cancel
         </button>
         <button
           type="submit"
           disabled={loading}
-          className="px-4 py-2 text-white bg-slate-700 rounded hover:bg-slate-800 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+          className="w-full sm:w-auto px-4 py-2 text-white bg-slate-700 rounded hover:bg-slate-800 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
         >
           {loading ? 'Saving...' : project ? 'Update Project' : 'Create Project'}
         </button>

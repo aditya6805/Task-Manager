@@ -46,41 +46,41 @@ export default function ProjectDetail() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white border border-gray-200 rounded p-6">
-        <div className="flex items-start justify-between gap-4 mb-4">
-          <div>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="bg-white border border-gray-200 rounded p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-4">
+          <div className="min-w-0">
             <p className="text-xs text-gray-500 mb-1">Project ID: {project.projectId || project._id}</p>
-            <h1 className="text-3xl font-bold text-gray-800">{project.title}</h1>
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800 break-words">{project.title}</h1>
             <p className="mt-2 text-sm text-gray-600">{project.description || 'No description provided.'}</p>
           </div>
-          <Link to="/projects" className="text-sm text-slate-700 hover:underline">
+          <Link to="/projects" className="text-sm text-slate-700 hover:underline shrink-0">
             Back to Projects
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="border border-gray-200 rounded p-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+          <div className="border border-gray-200 rounded p-3 sm:p-4">
             <p className="text-xs text-gray-500">Created By</p>
-            <p className="font-medium text-gray-800">{project.createdByUser?.name || project.createdByUser?.email || project.createdBy}</p>
+            <p className="font-medium text-gray-800 truncate text-sm sm:text-base">{project.createdByUser?.name || project.createdByUser?.email || project.createdBy}</p>
           </div>
-          <div className="border border-gray-200 rounded p-4">
+          <div className="border border-gray-200 rounded p-3 sm:p-4">
             <p className="text-xs text-gray-500">Created On</p>
             <p className="font-medium text-gray-800">{project.createdAt ? new Date(project.createdAt).toLocaleDateString() : '-'}</p>
           </div>
-          <div className="border border-gray-200 rounded p-4">
+          <div className="border border-gray-200 rounded p-3 sm:p-4">
             <p className="text-xs text-gray-500">Members</p>
             <p className="font-medium text-gray-800">{project.members?.length || 0}</p>
           </div>
-          <div className="border border-gray-200 rounded p-4">
+          <div className="border border-gray-200 rounded p-3 sm:p-4">
             <p className="text-xs text-gray-500">Tasks</p>
             <p className="font-medium text-gray-800">{project.tasks?.length || 0}</p>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white border border-gray-200 rounded p-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        <div className="bg-white border border-gray-200 rounded p-4 sm:p-6">
           <h2 className="text-lg font-semibold text-gray-800 mb-4">Members</h2>
           <div className="space-y-2">
             {(project.memberDetails || []).map((member) => (
@@ -97,7 +97,7 @@ export default function ProjectDetail() {
           </div>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded p-6">
+        <div className="bg-white border border-gray-200 rounded p-4 sm:p-6">
           <h2 className="text-lg font-semibold text-gray-800 mb-4">Progress</h2>
           <div className="space-y-3 text-sm text-gray-700">
             <div className="flex items-center justify-between">
@@ -120,7 +120,7 @@ export default function ProjectDetail() {
         </div>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded p-6">
+      <div className="bg-white border border-gray-200 rounded p-4 sm:p-6">
         <h2 className="text-lg font-semibold text-gray-800 mb-4">Tasks</h2>
         {project.tasks?.length > 0 ? (
           <div className="space-y-3">
