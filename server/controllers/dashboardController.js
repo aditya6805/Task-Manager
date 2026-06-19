@@ -67,13 +67,18 @@ export const getDashboard = async (req, res) => {
       });
     }
 
+    // Admin sees ALL data; regular user sees only their own
+    const isAdmin = user.role === "admin";
+    const taskFilter = isAdmin ? {} : { assignedTo: userId };
+    const projectFilter = isAdmin ? {} : { members: userId };
+
     // 1. Get user's projects
-    const projects = await Project.find({ members: userId }).sort({
+    const projects = await Project.find(projectFilter).sort({
       createdAt: -1,
     });
 
-    // 2. Get task statistics for user
-    const allTasks = await Task.find({ assignedTo: userId });
+    // 2. Get task statistics
+    const allTasks = await Task.find(taskFilter);
 
     const taskStats = {
       total: allTasks.length,
@@ -84,7 +89,7 @@ export const getDashboard = async (req, res) => {
 
     // 3. Get overdue tasks
     const overdueTasks = await Task.find({
-      assignedTo: userId,
+      ...taskFilter,
       status: { $ne: "Completed" },
       dueDate: { $lt: now, $ne: null },
     })
@@ -93,7 +98,7 @@ export const getDashboard = async (req, res) => {
 
     // 4. Get pending tasks in detail
     const pendingTasks = await Task.find({
-      assignedTo: userId,
+      ...taskFilter,
       status: "Pending",
     })
       .populate("projectId")
@@ -101,7 +106,7 @@ export const getDashboard = async (req, res) => {
 
     // 5. Get in-progress tasks in detail
     const inProgressTasks = await Task.find({
-      assignedTo: userId,
+      ...taskFilter,
       status: "In Progress",
     })
       .populate("projectId")
@@ -144,7 +149,7 @@ export const getDashboard = async (req, res) => {
     nextWeek.setDate(nextWeek.getDate() + 7);
 
     const upcomingTasks = await Task.find({
-      assignedTo: userId,
+      ...taskFilter,
       status: { $ne: "Completed" },
       dueDate: { $gte: now, $lte: nextWeek },
     })
@@ -234,10 +239,15 @@ export const getDashboardStats = async (req, res) => {
     const userId = req.user.uid;
     const now = new Date();
 
+    // Admin sees all tasks; regular user sees only assigned
+    const user = await User.findOne({ firebaseUID: userId });
+    const isAdmin = user?.role === "admin";
+    const taskFilter = isAdmin ? {} : { assignedTo: userId };
+
     // Get task statistics
-    const allTasks = await Task.find({ assignedTo: userId });
+    const allTasks = await Task.find(taskFilter);
     const overdueTasks = await Task.find({
-      assignedTo: userId,
+      ...taskFilter,
       status: { $ne: "Completed" },
       dueDate: { $lt: now, $ne: null },
     });
@@ -250,7 +260,9 @@ export const getDashboardStats = async (req, res) => {
         ? Math.round((completedTasks / allTasks.length) * 100)
         : 0;
 
-    const projectCount = await Project.countDocuments({ members: userId });
+    const projectCount = await Project.countDocuments(
+      isAdmin ? {} : { members: userId },
+    );
 
     res.status(200).json({
       status: "success",

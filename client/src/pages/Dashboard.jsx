@@ -113,7 +113,7 @@ export default function Dashboard() {
               {(dashboard.projects || []).slice(0, 5).map((project) => (
                 <div key={project._id} className="flex items-center justify-between pb-3 border-b border-gray-200 last:border-0">
                   <div><p className="font-medium text-gray-800">{project.title}</p><p className="text-xs text-gray-500">{project.taskCount} tasks</p></div>
-                  <span className="text-sm text-gray-600">{project.members?.length || 0} members</span>
+                  <span className="text-sm text-gray-600">{project.memberCount ?? project.members?.length ?? 0} members</span>
                 </div>
               ))}
             </div>
